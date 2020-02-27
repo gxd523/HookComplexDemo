@@ -3,6 +3,7 @@
     package="com.demo.hook">
 
     <application
+        android:name=".MyApplication"
         android:icon="@mipmap/ic_launcher"
         android:label="HookDemo"
         android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen">
