@@ -12,7 +12,7 @@ import android.widget.Toast;
 import com.demo.hook.R;
 import com.demo.hook.util.LoginUtil;
 
-public class LoginActivity extends Activity {
+public class InterceptorActivity extends Activity {
     public static final String EXTRA_INTENT = "extraIntent";
     EditText nameEt;
     EditText pwdEt;
@@ -21,7 +21,7 @@ public class LoginActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_login);
+        setContentView(R.layout.activity_interceptor);
         nameEt = findViewById(R.id.name_et);
         pwdEt = findViewById(R.id.pwd_et);
         className = getIntent().getStringExtra(EXTRA_INTENT);

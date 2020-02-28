@@ -6,8 +6,8 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
 
-import com.demo.hook.util.LoginUtil;
 import com.demo.hook.R;
+import com.demo.hook.util.LoginUtil;
 
 public class MainActivity extends Activity {
     @Override
@@ -16,16 +16,8 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
     }
 
-    public void jumpSecondActivity(View view) {
-        startActivity(new Intent(this, SecondActivity.class));
-    }
-
-    public void jumpThirdActivity(View view) {
-        startActivity(new Intent(this, ThirdActivity.class));
-    }
-
-    public void jumpForthActivity(View view) {
-        startActivity(new Intent(this, ForthActivity.class));
+    public void jumpTargetActivity(View view) {
+        startActivity(new Intent(this, TargetActivity.class));
     }
 
     public void logout(View view) {

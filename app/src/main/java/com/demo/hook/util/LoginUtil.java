@@ -25,13 +25,13 @@ public class LoginUtil {
 
     public void logout() {
         SharedPreferences.Editor editor = sp.edit();
-        editor.putBoolean("login", true);
+        editor.putBoolean(IS_NEED_LOGIN, true);
         editor.apply();
     }
 
     public void login() {
         SharedPreferences.Editor editor = sp.edit();
-        editor.putBoolean("login", false);
+        editor.putBoolean(IS_NEED_LOGIN, false);
         editor.apply();
     }
 }

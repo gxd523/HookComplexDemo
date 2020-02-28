@@ -8,7 +8,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 
-import com.demo.hook.activity.LoginActivity;
+import com.demo.hook.activity.InterceptorActivity;
 import com.demo.hook.activity.ProxyActivity;
 
 import java.lang.reflect.Field;
@@ -195,8 +195,8 @@ public class HookUtil {
         Intent targetIntent = proxyIntent.getParcelableExtra(HookUtil.TARGET_INTENT);
         if (targetIntent != null) {
             if (LoginUtil.instance.isNeedLogin()) {
-                ComponentName componentName = new ComponentName(context, LoginActivity.class);
-                targetIntent.putExtra(LoginActivity.EXTRA_INTENT, targetIntent.getComponent().getClassName());
+                ComponentName componentName = new ComponentName(context, InterceptorActivity.class);
+                targetIntent.putExtra(InterceptorActivity.EXTRA_INTENT, targetIntent.getComponent().getClassName());
                 targetIntent.setComponent(componentName);
             } else {
                 targetIntent.setComponent(targetIntent.getComponent());

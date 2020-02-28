@@ -9,20 +9,8 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:onClick="jumpSecondActivity"
-        android:text="跳转SecondActivity" />
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:onClick="jumpThirdActivity"
-        android:text="跳转ThirdActivity" />
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:onClick="jumpForthActivity"
-        android:text="跳转ForthActivity" />
+        android:onClick="jumpTargetActivity"
+        android:text="跳转TargetActivity" />
 
     <Button
         android:layout_width="wrap_content"
