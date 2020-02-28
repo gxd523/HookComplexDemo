@@ -1,19 +1,21 @@
-package com.demo.hook;
+package com.demo.hook.activity;
 
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.demo.hook.R;
+import com.demo.hook.util.LoginUtil;
+
 public class LoginActivity extends Activity {
+    public static final String EXTRA_INTENT = "extraIntent";
     EditText nameEt;
     EditText pwdEt;
-    SharedPreferences sp;
     private String className;
 
     @Override
@@ -22,8 +24,7 @@ public class LoginActivity extends Activity {
         setContentView(R.layout.activity_login);
         nameEt = findViewById(R.id.name_et);
         pwdEt = findViewById(R.id.pwd_et);
-        sp = this.getSharedPreferences("alan", MODE_PRIVATE);
-        className = getIntent().getStringExtra("extraIntent");
+        className = getIntent().getStringExtra(EXTRA_INTENT);
         if (className != null) {
             ((TextView) findViewById(R.id.text)).setText("来自界面：" + className);
         }
@@ -34,12 +35,8 @@ public class LoginActivity extends Activity {
             Toast.makeText(this, "请填写用户名 或密码", Toast.LENGTH_SHORT).show();
             return;
         }
-        SharedPreferences.Editor editor = sp.edit();
         if ("abc".equals(nameEt.getText().toString()) && "123".equals(pwdEt.getText().toString())) {
-            editor.putString("name", nameEt.getText().toString());
-            editor.putString("pwd", pwdEt.getText().toString());
-            editor.putBoolean("login", true);
-            editor.apply();
+            LoginUtil.instance.login();
             Toast.makeText(this, "登录成功", Toast.LENGTH_SHORT).show();
 
             if (className != null) {
@@ -49,8 +46,7 @@ public class LoginActivity extends Activity {
                 finish();
             }
         } else {
-            editor.putBoolean("login", false);
-            editor.apply();
+            LoginUtil.instance.logout();
             Toast.makeText(this, "登录失败", Toast.LENGTH_SHORT).show();
         }
     }

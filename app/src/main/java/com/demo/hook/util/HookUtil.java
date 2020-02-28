@@ -1,13 +1,15 @@
-package com.demo.hook;
+package com.demo.hook.util;
 
 import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+
+import com.demo.hook.activity.LoginActivity;
+import com.demo.hook.activity.ProxyActivity;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
@@ -80,22 +82,18 @@ public class HookUtil {
         Field mCallbackField = Handler.class.getDeclaredField("mCallback");
         mCallbackField.setAccessible(true);
         Handler.Callback callback = generateHandlerCallback(context);
-        if (callback != null) {
-            mCallbackField.set(handler, callback);
-        } else {
-            throw new IllegalStateException("实在是没有检测到这种系统，需要对这种系统单独处理...");
-        }
+        mCallbackField.set(handler, callback);
     }
 
     /**
      * IActivityManager实例也就是IActivityManager.aidl接口对应的实例对象
      */
     private static Object getIActivityManagerInstance() throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        Object IActivityManager = null;
-        if (Build.VERSION.SDK_INT > 25 && Build.VERSION.SDK_INT < 29) {
+        Object IActivityManager;
+        if (Build.VERSION.SDK_INT > 25) {
             Class activityManagerClass = Class.forName("android.app.ActivityManager");
             IActivityManager = activityManagerClass.getMethod("getService").invoke(null);
-        } else if (Build.VERSION.SDK_INT < 26) {
+        } else {
             Class activityManagerClass = Class.forName("android.app.ActivityManagerNative");
             Method getDefaultMethod = activityManagerClass.getDeclaredMethod("getDefault");
             getDefaultMethod.setAccessible(true);
@@ -108,14 +106,14 @@ public class HookUtil {
      * ActivityManager里的成员变量Singleton<IActivityManager>
      */
     private static Object getIActivityManagerSingletonInstance() throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
-        Object IActivityManagerSingleton = null;
+        Object IActivityManagerSingleton;
 
-        if (Build.VERSION.SDK_INT > 25 && Build.VERSION.SDK_INT < 29) {
+        if (Build.VERSION.SDK_INT > 25) {
             Class activityManagerClass = Class.forName("android.app.ActivityManager");
             Field IActivityManagerSingletonField = activityManagerClass.getDeclaredField("IActivityManagerSingleton");
             IActivityManagerSingletonField.setAccessible(true);
             IActivityManagerSingleton = IActivityManagerSingletonField.get(null);
-        } else if (Build.VERSION.SDK_INT < 26) {
+        } else {
             Class activityManagerClass = Class.forName("android.app.ActivityManagerNative");
             Field gDefaultField = activityManagerClass.getDeclaredField("gDefault");
             gDefaultField.setAccessible(true);
@@ -125,11 +123,11 @@ public class HookUtil {
     }
 
     private static Object getActivityThreadInstance() throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, NoSuchFieldException {
-        Object activityThread = null;
+        Object activityThread;
         Class activityThreadClass = Class.forName("android.app.ActivityThread");
-        if (Build.VERSION.SDK_INT > 25 && Build.VERSION.SDK_INT < 29) {
+        if (Build.VERSION.SDK_INT > 25) {
             activityThread = activityThreadClass.getMethod("currentActivityThread").invoke(null);
-        } else if (Build.VERSION.SDK_INT < 26) {
+        } else {
             Field sCurrentActivityThreadField = activityThreadClass.getDeclaredField("sCurrentActivityThread");
             sCurrentActivityThreadField.setAccessible(true);
             activityThread = sCurrentActivityThreadField.get(null);
@@ -137,20 +135,24 @@ public class HookUtil {
         return activityThread;
     }
 
+    /**
+     * 替换Handler的callback成员变量
+     */
     private static Handler.Callback generateHandlerCallback(final Context context) {
-        return Build.VERSION.SDK_INT > 28 ? null : new Handler.Callback() {
+        return new Handler.Callback() {
             @Override
             public boolean handleMessage(Message msg) {
                 if (Build.VERSION.SDK_INT > 25) {
-                    if (msg.what == 159) {
-                        Object mClientTransaction = msg.obj;
+                    if (msg.what == 159) {// EXECUTE_TRANSACTION
+                        Object clientTransaction = msg.obj;
 
                         try {
                             Class clientTransactionClass = Class.forName("android.app.servertransaction.ClientTransaction");
+                            // private List<ClientTransactionItem> mActivityCallbacks;
                             Field mActivityCallbacksField = clientTransactionClass.getDeclaredField("mActivityCallbacks");
                             mActivityCallbacksField.setAccessible(true);
                             // List<LaunchActivityItem>
-                            List mActivityCallbacks = (List) mActivityCallbacksField.get(mClientTransaction);
+                            List mActivityCallbacks = (List) mActivityCallbacksField.get(clientTransaction);
 
                             // 高版本存在多次权限检测，所以添加需要判断
                             if (mActivityCallbacks == null || mActivityCallbacks.size() == 0) {
@@ -165,23 +167,7 @@ public class HookUtil {
                                 return false;
                             }
 
-                            Field intentField = launchActivityItemClass.getDeclaredField("mIntent");
-                            intentField.setAccessible(true);
-
-                            // 需要拿到真实的Intent
-                            Intent proxyIntent = (Intent) intentField.get(launchActivityItem);
-                            Intent targetIntent = proxyIntent.getParcelableExtra(HookUtil.TARGET_INTENT);
-                            if (targetIntent != null) {// 集中式登录
-                                SharedPreferences share = context.getSharedPreferences("alan", Context.MODE_PRIVATE);
-                                if (share.getBoolean("login", false)) {// 登录  还原原有的意图
-                                    targetIntent.setComponent(targetIntent.getComponent());
-                                } else {
-                                    ComponentName componentName = new ComponentName(context, LoginActivity.class);
-                                    targetIntent.putExtra("extraIntent", targetIntent.getComponent().getClassName());
-                                    targetIntent.setComponent(componentName);
-                                }
-                                intentField.set(launchActivityItem, targetIntent);
-                            }
+                            revertIntent(context, launchActivityItem, launchActivityItemClass.getDeclaredField("mIntent"));
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -190,27 +176,10 @@ public class HookUtil {
                     if (msg.what == 100) {
                         Object mActivityClientRecord = msg.obj;
                         try {
-                            Field intentField = mActivityClientRecord.getClass().getDeclaredField("intent");
-                            intentField.setAccessible(true);
-                            Intent proxyIntent = (Intent) intentField.get(mActivityClientRecord);
-                            // TODO 还原操作，要把之前的LoginActivity给换回来
-                            Intent targetIntent = proxyIntent.getParcelableExtra(HookUtil.TARGET_INTENT);
-                            if (targetIntent != null) {
-                                //集中式登录
-                                SharedPreferences share = context.getSharedPreferences("alan", Context.MODE_PRIVATE);
-                                if (share.getBoolean("login", false)) {
-                                    // 登录  还原把原有的意图放到realyIntent
-                                    targetIntent.setComponent(targetIntent.getComponent());
-                                } else {
-                                    String className = targetIntent.getComponent().getClassName();
-                                    ComponentName componentName = new ComponentName(context, LoginActivity.class);
-                                    targetIntent.putExtra("extraIntent", className);
-                                    targetIntent.setComponent(componentName);
-                                }
-                                // 反射的方式
-                                intentField.set(mActivityClientRecord, targetIntent);
-                            }
-                        } catch (Exception e) {
+                            revertIntent(context, mActivityClientRecord, mActivityClientRecord.getClass().getDeclaredField("intent"));
+                        } catch (IllegalAccessException e) {
+                            e.printStackTrace();
+                        } catch (NoSuchFieldException e) {
                             e.printStackTrace();
                         }
                     }
@@ -218,5 +187,21 @@ public class HookUtil {
                 return false;
             }
         };
+    }
+
+    private static void revertIntent(Context context, Object obj, Field intentField) throws IllegalAccessException {
+        intentField.setAccessible(true);
+        Intent proxyIntent = (Intent) intentField.get(obj);
+        Intent targetIntent = proxyIntent.getParcelableExtra(HookUtil.TARGET_INTENT);
+        if (targetIntent != null) {
+            if (LoginUtil.instance.isNeedLogin()) {
+                ComponentName componentName = new ComponentName(context, LoginActivity.class);
+                targetIntent.putExtra(LoginActivity.EXTRA_INTENT, targetIntent.getComponent().getClassName());
+                targetIntent.setComponent(componentName);
+            } else {
+                targetIntent.setComponent(targetIntent.getComponent());
+            }
+            intentField.set(obj, targetIntent);
+        }
     }
 }
