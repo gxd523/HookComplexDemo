@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 
 import com.demo.hook.activity.InterceptorActivity;
 import com.demo.hook.activity.ProxyActivity;
@@ -169,7 +170,7 @@ public class HookUtil {
 
                             revertIntent(context, launchActivityItem, launchActivityItemClass.getDeclaredField("mIntent"));
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            Log.d("gxd", "HookUtil.handleMessage-->", e);
                         }
                     }
                 } else {
@@ -189,6 +190,9 @@ public class HookUtil {
         };
     }
 
+    /**
+     * @param obj 含有intent成员变量的实例对象
+     */
     private static void revertIntent(Context context, Object obj, Field intentField) throws IllegalAccessException {
         intentField.setAccessible(true);
         Intent proxyIntent = (Intent) intentField.get(obj);

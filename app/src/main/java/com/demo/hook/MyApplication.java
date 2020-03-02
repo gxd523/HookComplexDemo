@@ -1,6 +1,7 @@
 package com.demo.hook;
 
 import android.app.Application;
+import android.util.Log;
 
 import com.demo.hook.util.HookUtil;
 import com.demo.hook.util.LoginUtil;
@@ -14,7 +15,7 @@ public class MyApplication extends Application {
             HookUtil.hookActivityManager(this);
             HookUtil.hookActivityThreadHandlerCallback(this);
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.d("gxd", "MyApplication.onCreate-->", e);
         }
     }
 }
