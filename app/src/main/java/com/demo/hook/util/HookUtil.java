@@ -20,7 +20,7 @@ import java.lang.reflect.Proxy;
 import java.util.List;
 
 /**
- * 专门处理绕过AMS检测，让LoginActivity可以正常通过
+ * 专门处理绕过AMS检测，让InterceptorActivity可以正常通过
  */
 public class HookUtil {
     private static final String TARGET_INTENT = "intent";
@@ -50,7 +50,7 @@ public class HookUtil {
                     public Object invoke(Object obj, Method method, Object[] args) throws Throwable {
                         // int startActivity(in IApplicationThread caller, in String callingPackage, in Intent intent, in String resolvedType, in IBinder resultTo, in String resultWho, int requestCode, int flags, in ProfilerInfo profilerInfo, in Bundle options);
                         if ("startActivity".equals(method.getName())) {
-                            // 把不能经过检测的LoginActivity替换成能够经过检测的ProxyActivity
+                            // 把不能经过检测的InterceptorActivity替换成能够经过检测的ProxyActivity
                             Intent proxyIntent = new Intent(context, ProxyActivity.class);
                             // 把目标的LoginActivity取出来携带过去
                             Intent intent = (Intent) args[2];
@@ -198,7 +198,7 @@ public class HookUtil {
         Intent proxyIntent = (Intent) intentField.get(obj);
         Intent targetIntent = proxyIntent.getParcelableExtra(HookUtil.TARGET_INTENT);
         if (targetIntent != null) {
-            if (LoginUtil.instance.isNeedLogin()) {
+            if (InterceptorUtil.instance.isIntercept()) {
                 ComponentName componentName = new ComponentName(context, InterceptorActivity.class);
                 targetIntent.putExtra(InterceptorActivity.EXTRA_INTENT, targetIntent.getComponent().getClassName());
                 targetIntent.setComponent(componentName);

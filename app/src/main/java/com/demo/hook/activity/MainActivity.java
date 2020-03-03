@@ -4,10 +4,10 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.Toast;
+import android.widget.TextView;
 
 import com.demo.hook.R;
-import com.demo.hook.util.LoginUtil;
+import com.demo.hook.util.InterceptorUtil;
 
 public class MainActivity extends Activity {
     @Override
@@ -20,8 +20,7 @@ public class MainActivity extends Activity {
         startActivity(new Intent(this, TargetActivity.class));
     }
 
-    public void logout(View view) {
-        LoginUtil.instance.logout();
-        Toast.makeText(this, "退出登录成功", Toast.LENGTH_SHORT).show();
+    public void setInterceptor(View view) {
+        ((TextView) view).setText(InterceptorUtil.instance.setInterceptor() ? "拦截器已开启" : "拦截器已关闭");
     }
 }

@@ -9,7 +9,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:gravity="center"
-        android:text="SecondActivity"
+        android:text="TargetActivity"
         android:textColor="#000"
         android:textSize="30sp" />
 </FrameLayout>

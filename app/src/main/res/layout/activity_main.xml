@@ -15,6 +15,6 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:onClick="logout"
-        android:text="退出登录" />
+        android:onClick="setInterceptor"
+        android:text="拦截器已开启" />
 </LinearLayout>
