@@ -21,9 +21,13 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         int drawableResId = getApplication().getResources().getIdentifier("ic_plugin", "drawable", "com.demo.plugin");
-        Drawable drawable = getDrawable(drawableResId);
-        if (drawable != null) {
-            Log.d("gxd", "拿到插件中的资源文件");
+        try {
+            Drawable drawable = getDrawable(drawableResId);
+            if (drawable != null) {
+                Log.d("gxd", "拿到插件中的资源文件");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
