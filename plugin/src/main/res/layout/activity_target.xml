@@ -4,12 +4,9 @@
     android:layout_height="match_parent"
     android:background="#FFF">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+    <View
+        android:layout_width="240px"
+        android:layout_height="220px"
         android:layout_gravity="center"
-        android:gravity="center"
-        android:text="TargetActivity"
-        android:textColor="#000"
-        android:textSize="30sp" />
+        android:background="@drawable/ic_plugin" />
 </FrameLayout>

@@ -9,9 +9,10 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
-import com.demo.hook.activity.InterceptorActivity;
 import com.demo.hook.activity.ProxyActivity;
 
+import java.io.File;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
@@ -19,11 +20,58 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.List;
 
+import dalvik.system.BaseDexClassLoader;
+import dalvik.system.DexClassLoader;
+import dalvik.system.PathClassLoader;
+
 /**
  * 专门处理绕过AMS检测，让InterceptorActivity可以正常通过
  */
 public class HookUtil {
     private static final String TARGET_INTENT = "intent";
+
+    public static void injectPluginClass(Context context) throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
+        String dexPath = context.getDir("dex", Context.MODE_PRIVATE).getAbsolutePath();
+        File pluginApk = new File(context.getExternalFilesDir(null), "plugin-debug.apk");
+        if (!pluginApk.exists()) {
+            Log.e("gxd", "没找到插件apk..." + pluginApk.getAbsolutePath());
+            return;
+        }
+
+        Class BaseDexClassLoaderClass = Class.forName("dalvik.system.BaseDexClassLoader");
+        Field pathListFiled = BaseDexClassLoaderClass.getDeclaredField("pathList");
+        pathListFiled.setAccessible(true);
+
+        Class DexPathListClass = Class.forName("dalvik.system.DexPathList");
+        Field dexElementsField = DexPathListClass.getDeclaredField("dexElements");
+        dexElementsField.setAccessible(true);
+
+        BaseDexClassLoader pluginClassLoader = new DexClassLoader(pluginApk.getAbsolutePath(), dexPath, null, context.getClassLoader());
+        PathClassLoader pathClassLoader = (PathClassLoader) context.getClassLoader();
+
+
+        Object pluginPathList = pathListFiled.get(pluginClassLoader);
+        Object pathList = pathListFiled.get(pathClassLoader);
+
+        Object pluginDexElements = dexElementsField.get(pluginPathList);
+        Object dexElements = dexElementsField.get(pathList);
+
+        int pluginLength = Array.getLength(pluginDexElements);
+        int length = Array.getLength(dexElements);
+
+        Class ElementClass = dexElements.getClass().getComponentType();
+
+        int totalLength = pluginLength + length;
+        Object newDexElements = Array.newInstance(ElementClass, totalLength);
+        for (int i = 0; i < totalLength; i++) {
+            if (i < pluginLength) {
+                Array.set(newDexElements, i, Array.get(pluginDexElements, i));
+            } else {
+                Array.set(newDexElements, i, Array.get(dexElements, i - pluginLength));
+            }
+        }
+        dexElementsField.set(pathList, newDexElements);
+    }
 
     /**
      * 由于Activity跳转时要经过IActivityManager的startActivity()，因此我们就是要在此方法调用前给传入的参数intent添加额外参数
@@ -143,47 +191,36 @@ public class HookUtil {
         return new Handler.Callback() {
             @Override
             public boolean handleMessage(Message msg) {
-                if (Build.VERSION.SDK_INT > 25) {
-                    if (msg.what == 159) {// EXECUTE_TRANSACTION
+                try {
+                    if (Build.VERSION.SDK_INT > 25 && msg.what == 159/*EXECUTE_TRANSACTION*/) {
                         Object clientTransaction = msg.obj;
+                        Class clientTransactionClass = Class.forName("android.app.servertransaction.ClientTransaction");
+                        // private List<ClientTransactionItem> mActivityCallbacks;
+                        Field mActivityCallbacksField = clientTransactionClass.getDeclaredField("mActivityCallbacks");
+                        mActivityCallbacksField.setAccessible(true);
+                        // List<LaunchActivityItem>
+                        List mActivityCallbacks = (List) mActivityCallbacksField.get(clientTransaction);
 
-                        try {
-                            Class clientTransactionClass = Class.forName("android.app.servertransaction.ClientTransaction");
-                            // private List<ClientTransactionItem> mActivityCallbacks;
-                            Field mActivityCallbacksField = clientTransactionClass.getDeclaredField("mActivityCallbacks");
-                            mActivityCallbacksField.setAccessible(true);
-                            // List<LaunchActivityItem>
-                            List mActivityCallbacks = (List) mActivityCallbacksField.get(clientTransaction);
-
-                            // 高版本存在多次权限检测，所以添加需要判断
-                            if (mActivityCallbacks == null || mActivityCallbacks.size() == 0) {
-                                return false;
-                            }
-
-                            // LaunchActivityItem
-                            Object launchActivityItem = mActivityCallbacks.get(0);
-                            Class launchActivityItemClass = Class.forName("android.app.servertransaction.LaunchActivityItem");
-
-                            if (!launchActivityItemClass.isInstance(launchActivityItem)) {
-                                return false;
-                            }
-
-                            revertIntent(context, launchActivityItem, launchActivityItemClass.getDeclaredField("mIntent"));
-                        } catch (Exception e) {
-                            Log.d("gxd", "HookUtil.handleMessage-->", e);
+                        // 高版本存在多次权限检测，所以添加需要判断
+                        if (mActivityCallbacks == null || mActivityCallbacks.size() == 0) {
+                            return false;
                         }
-                    }
-                } else {
-                    if (msg.what == 100) {
+
+                        // LaunchActivityItem
+                        Object launchActivityItem = mActivityCallbacks.get(0);
+                        Class launchActivityItemClass = Class.forName("android.app.servertransaction.LaunchActivityItem");
+
+                        if (!launchActivityItemClass.isInstance(launchActivityItem)) {
+                            return false;
+                        }
+
+                        revertIntent(context, launchActivityItem, launchActivityItemClass.getDeclaredField("mIntent"));
+                    } else if (msg.what == 100) {
                         Object mActivityClientRecord = msg.obj;
-                        try {
-                            revertIntent(context, mActivityClientRecord, mActivityClientRecord.getClass().getDeclaredField("intent"));
-                        } catch (IllegalAccessException e) {
-                            e.printStackTrace();
-                        } catch (NoSuchFieldException e) {
-                            e.printStackTrace();
-                        }
+                        revertIntent(context, mActivityClientRecord, mActivityClientRecord.getClass().getDeclaredField("intent"));
                     }
+                } catch (Exception e) {
+                    Log.e("gxd", "HookUtil.handleMessage-->", e);
                 }
                 return false;
             }
@@ -193,14 +230,15 @@ public class HookUtil {
     /**
      * @param obj 含有intent成员变量的实例对象
      */
-    private static void revertIntent(Context context, Object obj, Field intentField) throws IllegalAccessException {
+    private static void revertIntent(Context context, Object obj, Field intentField) throws IllegalAccessException, ClassNotFoundException {
         intentField.setAccessible(true);
         Intent proxyIntent = (Intent) intentField.get(obj);
         Intent targetIntent = proxyIntent.getParcelableExtra(HookUtil.TARGET_INTENT);
         if (targetIntent != null) {
             if (InterceptorUtil.instance.isIntercept()) {
-                ComponentName componentName = new ComponentName(context, InterceptorActivity.class);
-                targetIntent.putExtra(InterceptorActivity.EXTRA_INTENT, targetIntent.getComponent().getClassName());
+                Class InterceptorActivityClass = Class.forName("com.demo.plugin.InterceptorActivity");
+                ComponentName componentName = new ComponentName(context, InterceptorActivityClass);
+                targetIntent.putExtra("extraIntent", targetIntent.getComponent().getClassName());
                 targetIntent.setComponent(componentName);
             } else {
                 targetIntent.setComponent(targetIntent.getComponent());
