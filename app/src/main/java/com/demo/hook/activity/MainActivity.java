@@ -11,6 +11,12 @@ import android.widget.TextView;
 import com.demo.hook.R;
 import com.demo.hook.util.InterceptorUtil;
 
+/**
+ * 1、加载plugin的dex到主应用dex的classLoader上
+ * 2、替换IActivityManager实例为我们的代理ActivityManager，修改其startActivity()，intent替换为注册的proxyActivity
+ * 3、将ActivityThread里的Handler对象的callback对象替换为我们的callback
+ * 4、从Callback的handleMessage()中msg.obj获取intent，将跳转修改为targetActivity(注意返回false，否则就不会走handler的handleMessage())
+ */
 public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {

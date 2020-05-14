@@ -107,9 +107,9 @@ public class HookUtil {
                     public Object invoke(Object obj, Method method, Object[] args) throws Throwable {
                         // int startActivity(in IApplicationThread caller, in String callingPackage, in Intent intent, in String resolvedType, in IBinder resultTo, in String resultWho, int requestCode, int flags, in ProfilerInfo profilerInfo, in Bundle options);
                         if ("startActivity".equals(method.getName())) {
-                            // 把不能经过检测的InterceptorActivity替换成能够经过检测的ProxyActivity
+                            // 把不能经过检测的TargetActivity替换成能够经过检测的ProxyActivity
                             Intent proxyIntent = new Intent(context, ProxyActivity.class);
-                            // 把目标的LoginActivity取出来携带过去
+                            // 把目标的TargetActivity取出来携带过去
                             Intent intent = (Intent) args[2];
                             proxyIntent.putExtra(HookUtil.TARGET_INTENT, intent);
                             args[2] = proxyIntent;
