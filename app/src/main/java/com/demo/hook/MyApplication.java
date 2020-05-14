@@ -18,7 +18,7 @@ public class MyApplication extends Application {
     public void onCreate() {
         super.onCreate();
         try {
-            HookUtil.injectPluginClass(this);
+            HookUtil.mergeDex(this);
             HookUtil.hookActivityManager(this);
             HookUtil.hookActivityThreadHandlerCallback(this);
         } catch (Exception e) {

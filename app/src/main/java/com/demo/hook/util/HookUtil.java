@@ -30,47 +30,56 @@ import dalvik.system.PathClassLoader;
 public class HookUtil {
     private static final String TARGET_INTENT = "intent";
 
-    public static void injectPluginClass(Context context) throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
-        String dexPath = context.getDir("dex", Context.MODE_PRIVATE).getAbsolutePath();
+    /**
+     * 将plugin.apk的dex转为classLoader，并获取element数组，合并到应用的dexPathList的element数组中，最终于应用的dex合并
+     */
+    public static void mergeDex(Context context) throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
         File pluginApk = new File(context.getExternalFilesDir(null), "plugin-debug.apk");
         if (!pluginApk.exists()) {
             Log.e("gxd", "没找到插件apk..." + pluginApk.getAbsolutePath());
             return;
         }
 
-        Class BaseDexClassLoaderClass = Class.forName("dalvik.system.BaseDexClassLoader");
-        Field pathListFiled = BaseDexClassLoaderClass.getDeclaredField("pathList");
+        String dexPath = context.getDir("dex", Context.MODE_PRIVATE).getAbsolutePath();
+
+        // 将plugin.apk的dex文件放入内部存储目录/data/user/0/包名/app_dex下
+        BaseDexClassLoader pluginClassLoader = new DexClassLoader(pluginApk.getAbsolutePath(), dexPath, null, context.getClassLoader());
+        PathClassLoader classLoader = (PathClassLoader) context.getClassLoader();
+
+        // 获取获取应用和plugin的dexPathList对象
+        Class baseDexClassLoaderClass = Class.forName("dalvik.system.BaseDexClassLoader");
+        Field pathListFiled = baseDexClassLoaderClass.getDeclaredField("pathList");
         pathListFiled.setAccessible(true);
 
-        Class DexPathListClass = Class.forName("dalvik.system.DexPathList");
-        Field dexElementsField = DexPathListClass.getDeclaredField("dexElements");
+        Object dexPathList = pathListFiled.get(classLoader);
+        Object pluginDexPathList = pathListFiled.get(pluginClassLoader);
+
+        // 获取获取应用和plugin的element数组对象
+        Class dexPathListClass = Class.forName("dalvik.system.DexPathList");
+        Field dexElementsField = dexPathListClass.getDeclaredField("dexElements");
         dexElementsField.setAccessible(true);
 
-        BaseDexClassLoader pluginClassLoader = new DexClassLoader(pluginApk.getAbsolutePath(), dexPath, null, context.getClassLoader());
-        PathClassLoader pathClassLoader = (PathClassLoader) context.getClassLoader();
+        Object pluginElementArray = dexElementsField.get(pluginDexPathList);
+        Object elementArray = dexElementsField.get(dexPathList);
 
-
-        Object pluginPathList = pathListFiled.get(pluginClassLoader);
-        Object pathList = pathListFiled.get(pathClassLoader);
-
-        Object pluginDexElements = dexElementsField.get(pluginPathList);
-        Object dexElements = dexElementsField.get(pathList);
-
-        int pluginLength = Array.getLength(pluginDexElements);
-        int length = Array.getLength(dexElements);
-
-        Class ElementClass = dexElements.getClass().getComponentType();
-
+        // 合并应用和plugin的element数组
+        int pluginLength = Array.getLength(pluginElementArray);
+        int length = Array.getLength(elementArray);
         int totalLength = pluginLength + length;
-        Object newDexElements = Array.newInstance(ElementClass, totalLength);
+
+        Class elementClass = elementArray.getClass().getComponentType();
+        Object mergeElementArray = Array.newInstance(elementClass, totalLength);
+
         for (int i = 0; i < totalLength; i++) {
-            if (i < pluginLength) {
-                Array.set(newDexElements, i, Array.get(pluginDexElements, i));
+            if (i < pluginLength) {// 先去plugin的element元素放入新element数组，再放应用的element元素
+                Array.set(mergeElementArray, i, Array.get(pluginElementArray, i));
             } else {
-                Array.set(newDexElements, i, Array.get(dexElements, i - pluginLength));
+                Array.set(mergeElementArray, i, Array.get(elementArray, i - pluginLength));
             }
         }
-        dexElementsField.set(pathList, newDexElements);
+
+        // 最后将新的element数组替换应用dexPathList中的element数组
+        dexElementsField.set(dexPathList, mergeElementArray);
     }
 
     /**
@@ -83,10 +92,10 @@ public class HookUtil {
      */
     @SuppressLint("PrivateApi")
     public static void hookActivityManager(final Context context) throws Exception {
-        final Object IActivityManager = getIActivityManagerInstance();
-        final Object IActivityManagerSingleton = getIActivityManagerSingletonInstance();
+        final Object iActivityManager = getIActivityManagerInstance();
+        final Object iActivityManagerSingleton = getIActivityManagerSingletonInstance();
 
-        if (IActivityManagerSingleton == null || IActivityManager == null) {
+        if (iActivityManagerSingleton == null || iActivityManager == null) {
             throw new IllegalStateException("实在是没有检测到这种系统，需要对这种系统单独处理...");
         }
 
@@ -105,7 +114,7 @@ public class HookUtil {
                             proxyIntent.putExtra(HookUtil.TARGET_INTENT, intent);
                             args[2] = proxyIntent;
                         }
-                        return method.invoke(IActivityManager, args);
+                        return method.invoke(iActivityManager, args);
                     }
                 });
 
@@ -113,7 +122,7 @@ public class HookUtil {
         Field mInstanceField = singletonClass.getDeclaredField("mInstance");
         mInstanceField.setAccessible(true);
         // 把系统里面的 IActivityManager 换成 我们自己写的动态代理
-        mInstanceField.set(IActivityManagerSingleton, IActivityManagerProxy);
+        mInstanceField.set(iActivityManagerSingleton, IActivityManagerProxy);
     }
 
     /**
@@ -138,17 +147,17 @@ public class HookUtil {
      * IActivityManager实例也就是IActivityManager.aidl接口对应的实例对象
      */
     private static Object getIActivityManagerInstance() throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        Object IActivityManager;
+        Object iActivityManager;
         if (Build.VERSION.SDK_INT > 25) {
             Class activityManagerClass = Class.forName("android.app.ActivityManager");
-            IActivityManager = activityManagerClass.getMethod("getService").invoke(null);
+            iActivityManager = activityManagerClass.getMethod("getService").invoke(null);
         } else {
             Class activityManagerClass = Class.forName("android.app.ActivityManagerNative");
             Method getDefaultMethod = activityManagerClass.getDeclaredMethod("getDefault");
             getDefaultMethod.setAccessible(true);
-            IActivityManager = getDefaultMethod.invoke(null);
+            iActivityManager = getDefaultMethod.invoke(null);
         }
-        return IActivityManager;
+        return iActivityManager;
     }
 
     /**
