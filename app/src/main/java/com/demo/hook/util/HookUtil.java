@@ -47,7 +47,7 @@ public class HookUtil {
         PathClassLoader classLoader = (PathClassLoader) context.getClassLoader();
 
         // 获取获取应用和plugin的dexPathList对象
-        Class baseDexClassLoaderClass = Class.forName("dalvik.system.BaseDexClassLoader");
+        Class<?> baseDexClassLoaderClass = Class.forName("dalvik.system.BaseDexClassLoader");
         Field pathListFiled = baseDexClassLoaderClass.getDeclaredField("pathList");
         pathListFiled.setAccessible(true);
 
@@ -55,7 +55,7 @@ public class HookUtil {
         Object pluginDexPathList = pathListFiled.get(pluginClassLoader);
 
         // 获取获取应用和plugin的element数组对象
-        Class dexPathListClass = Class.forName("dalvik.system.DexPathList");
+        Class<?> dexPathListClass = Class.forName("dalvik.system.DexPathList");
         Field dexElementsField = dexPathListClass.getDeclaredField("dexElements");
         dexElementsField.setAccessible(true);
 
@@ -67,7 +67,7 @@ public class HookUtil {
         int length = Array.getLength(elementArray);
         int totalLength = pluginLength + length;
 
-        Class elementClass = elementArray.getClass().getComponentType();
+        Class<?> elementClass = elementArray.getClass().getComponentType();
         Object mergeElementArray = Array.newInstance(elementClass, totalLength);
 
         for (int i = 0; i < totalLength; i++) {
