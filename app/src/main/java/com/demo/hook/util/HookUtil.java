@@ -21,7 +21,6 @@ import java.lang.reflect.Proxy;
 import java.util.List;
 
 import dalvik.system.BaseDexClassLoader;
-import dalvik.system.DexClassLoader;
 import dalvik.system.PathClassLoader;
 
 /**
@@ -40,10 +39,7 @@ public class HookUtil {
             return;
         }
 
-        String dexPath = context.getDir("dex", Context.MODE_PRIVATE).getAbsolutePath();
-
-        // 将plugin.apk的dex文件放入内部存储目录/data/user/0/包名/app_dex下
-        BaseDexClassLoader pluginClassLoader = new DexClassLoader(pluginApk.getAbsolutePath(), dexPath, null, context.getClassLoader());
+        BaseDexClassLoader pluginClassLoader = new PathClassLoader(pluginApk.getAbsolutePath(), context.getClassLoader());
         PathClassLoader classLoader = (PathClassLoader) context.getClassLoader();
 
         // 获取获取应用和plugin的dexPathList对象
@@ -118,7 +114,7 @@ public class HookUtil {
                     }
                 });
 
-        Class singletonClass = Class.forName("android.util.Singleton");
+        Class<?> singletonClass = Class.forName("android.util.Singleton");
         Field mInstanceField = singletonClass.getDeclaredField("mInstance");
         mInstanceField.setAccessible(true);
         // 把系统里面的 IActivityManager 换成 我们自己写的动态代理
@@ -133,7 +129,7 @@ public class HookUtil {
     public static void hookActivityThreadHandlerCallback(Context context) throws Exception {
         Object activityThread = getActivityThreadInstance();
 
-        Class activityThreadClass = Class.forName("android.app.ActivityThread");
+        Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
         Field handlerField = activityThreadClass.getDeclaredField("mH");
         handlerField.setAccessible(true);
         Object handler = handlerField.get(activityThread);
@@ -149,10 +145,10 @@ public class HookUtil {
     private static Object getIActivityManagerInstance() throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Object iActivityManager;
         if (Build.VERSION.SDK_INT > 25) {
-            Class activityManagerClass = Class.forName("android.app.ActivityManager");
+            Class<?> activityManagerClass = Class.forName("android.app.ActivityManager");
             iActivityManager = activityManagerClass.getMethod("getService").invoke(null);
         } else {
-            Class activityManagerClass = Class.forName("android.app.ActivityManagerNative");
+            Class<?> activityManagerClass = Class.forName("android.app.ActivityManagerNative");
             Method getDefaultMethod = activityManagerClass.getDeclaredMethod("getDefault");
             getDefaultMethod.setAccessible(true);
             iActivityManager = getDefaultMethod.invoke(null);
@@ -167,12 +163,12 @@ public class HookUtil {
         Object IActivityManagerSingleton;
 
         if (Build.VERSION.SDK_INT > 25) {
-            Class activityManagerClass = Class.forName("android.app.ActivityManager");
+            Class<?> activityManagerClass = Class.forName("android.app.ActivityManager");
             Field IActivityManagerSingletonField = activityManagerClass.getDeclaredField("IActivityManagerSingleton");
             IActivityManagerSingletonField.setAccessible(true);
             IActivityManagerSingleton = IActivityManagerSingletonField.get(null);
         } else {
-            Class activityManagerClass = Class.forName("android.app.ActivityManagerNative");
+            Class<?> activityManagerClass = Class.forName("android.app.ActivityManagerNative");
             Field gDefaultField = activityManagerClass.getDeclaredField("gDefault");
             gDefaultField.setAccessible(true);
             IActivityManagerSingleton = gDefaultField.get(null);
@@ -182,7 +178,7 @@ public class HookUtil {
 
     private static Object getActivityThreadInstance() throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, NoSuchFieldException {
         Object activityThread;
-        Class activityThreadClass = Class.forName("android.app.ActivityThread");
+        Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
         if (Build.VERSION.SDK_INT > 25) {
             activityThread = activityThreadClass.getMethod("currentActivityThread").invoke(null);
         } else {
@@ -203,12 +199,12 @@ public class HookUtil {
                 try {
                     if (Build.VERSION.SDK_INT > 25 && msg.what == 159/*EXECUTE_TRANSACTION*/) {
                         Object clientTransaction = msg.obj;
-                        Class clientTransactionClass = Class.forName("android.app.servertransaction.ClientTransaction");
+                        Class<?> clientTransactionClass = Class.forName("android.app.servertransaction.ClientTransaction");
                         // private List<ClientTransactionItem> mActivityCallbacks;
                         Field mActivityCallbacksField = clientTransactionClass.getDeclaredField("mActivityCallbacks");
                         mActivityCallbacksField.setAccessible(true);
                         // List<LaunchActivityItem>
-                        List mActivityCallbacks = (List) mActivityCallbacksField.get(clientTransaction);
+                        List<?> mActivityCallbacks = (List<?>) mActivityCallbacksField.get(clientTransaction);
 
                         // 高版本存在多次权限检测，所以添加需要判断
                         if (mActivityCallbacks == null || mActivityCallbacks.size() == 0) {
@@ -217,7 +213,7 @@ public class HookUtil {
 
                         // LaunchActivityItem
                         Object launchActivityItem = mActivityCallbacks.get(0);
-                        Class launchActivityItemClass = Class.forName("android.app.servertransaction.LaunchActivityItem");
+                        Class<?> launchActivityItemClass = Class.forName("android.app.servertransaction.LaunchActivityItem");
 
                         if (!launchActivityItemClass.isInstance(launchActivityItem)) {
                             return false;
@@ -245,7 +241,7 @@ public class HookUtil {
         Intent targetIntent = proxyIntent.getParcelableExtra(HookUtil.TARGET_INTENT);
         if (targetIntent != null) {
             if (InterceptorUtil.instance.isIntercept()) {
-                Class InterceptorActivityClass = Class.forName("com.demo.plugin.InterceptorActivity");
+                Class<?> InterceptorActivityClass = Class.forName("com.demo.plugin.InterceptorActivity");
                 ComponentName componentName = new ComponentName(context, InterceptorActivityClass);
                 targetIntent.putExtra("extraIntent", targetIntent.getComponent().getClassName());
                 targetIntent.setComponent(componentName);

@@ -1,11 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.demo.hook">
 
     <application
         android:name=".MyApplication"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@android:mipmap/sym_def_app_icon"
         android:label="HookDemo"
         android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen">
         <activity android:name=".activity.MainActivity">
