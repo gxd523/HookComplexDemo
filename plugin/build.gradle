@@ -12,3 +12,46 @@ android {
         versionName "1.0"
     }
 }
+
+afterEvaluate {
+    assembleRelease.doLast {
+        renamePluginFile(false)
+    }
+
+    assembleDebug.doLast {
+        renamePluginFile(true)
+    }
+}
+
+void renamePluginFile(boolean isDebug) {
+    def txt = isDebug ? "debug" : "release"
+    printPluginLog(txt, "begin")
+
+    // 皮肤文件名
+    final def pluginFileName = "plugin.apk"
+    // 皮肤目录
+    final def pluginDir = '../plugin-file/'
+    final def dir = new File(pluginDir)
+    if (!dir.exists()) {
+        dir.mkdirs()
+    }
+
+    final def f = new File(pluginDir + pluginFileName)
+    if (f.exists()) {
+        f.delete()
+    }
+
+    copy {
+        from(String.format('build/outputs/apk/%s/', txt))
+        into(pluginDir)
+        include '*.apk'
+        exclude '**/*-unaligned.apk'
+        rename(String.format('plugin-%s.apk', txt), pluginFileName)
+    }
+    printPluginLog(txt, "end")
+}
+
+void printPluginLog(String txt1, String txt2) {
+    def uppercaseTxt1 = txt1.substring(0, 1).toUpperCase() + txt1.substring(1)
+    println(String.format('.....................assemble%s.doLast.%s......................', uppercaseTxt1, txt2))
+}

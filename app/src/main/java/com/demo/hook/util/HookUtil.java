@@ -21,30 +21,35 @@ import java.lang.reflect.Proxy;
 import java.util.List;
 
 import dalvik.system.BaseDexClassLoader;
-import dalvik.system.PathClassLoader;
+import dalvik.system.DexClassLoader;
 
 /**
  * 专门处理绕过AMS检测，让InterceptorActivity可以正常通过
  */
 public class HookUtil {
+    public static final String PLUGIN_FILE_NAME = "plugin.apk";
     private static final String TARGET_INTENT = "intent";
 
     /**
      * 将plugin.apk的dex转为classLoader，并获取element数组，合并到应用的dexPathList的element数组中，最终于应用的dex合并
      */
     public static void mergeDex(Context context) throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
-        File pluginApk = new File(context.getExternalFilesDir(null), "plugin-debug.apk");
+        File pluginApk = new File(context.getExternalFilesDir(null), PLUGIN_FILE_NAME);
         if (!pluginApk.exists()) {
             Log.e("gxd", "没找到插件apk..." + pluginApk.getAbsolutePath());
             return;
         }
 
-        BaseDexClassLoader pluginClassLoader = new PathClassLoader(pluginApk.getAbsolutePath(), context.getClassLoader());
-        PathClassLoader classLoader = (PathClassLoader) context.getClassLoader();
+        BaseDexClassLoader pluginClassLoader = new DexClassLoader(
+                pluginApk.getAbsolutePath(),
+                context.getExternalFilesDir("apkdex").getAbsolutePath(),
+                null,
+                context.getClassLoader()
+        );
+        ClassLoader classLoader = context.getClassLoader();
 
         // 获取获取应用和plugin的dexPathList对象
-        Class<?> baseDexClassLoaderClass = Class.forName("dalvik.system.BaseDexClassLoader");
-        Field pathListFiled = baseDexClassLoaderClass.getDeclaredField("pathList");
+        Field pathListFiled = BaseDexClassLoader.class.getDeclaredField("pathList");
         pathListFiled.setAccessible(true);
 
         Object dexPathList = pathListFiled.get(classLoader);
@@ -67,7 +72,7 @@ public class HookUtil {
         Object mergeElementArray = Array.newInstance(elementClass, totalLength);
 
         for (int i = 0; i < totalLength; i++) {
-            if (i < pluginLength) {// 先去plugin的element元素放入新element数组，再放应用的element元素
+            if (i < pluginLength) {// 先把plugin的element元素放入新element数组，再放应用的element元素
                 Array.set(mergeElementArray, i, Array.get(pluginElementArray, i));
             } else {
                 Array.set(mergeElementArray, i, Array.get(elementArray, i - pluginLength));

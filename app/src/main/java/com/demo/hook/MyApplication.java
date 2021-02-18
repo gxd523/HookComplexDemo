@@ -30,7 +30,7 @@ public class MyApplication extends Application {
             assetManager = AssetManagerClass.newInstance();
             Method addAssetPathMethod = AssetManagerClass.getDeclaredMethod("addAssetPath", String.class);
             addAssetPathMethod.setAccessible(true);
-            String pluginApkPath = new File(getExternalFilesDir(null), "plugin-debug.apk").getAbsolutePath();
+            String pluginApkPath = new File(getExternalFilesDir(null), HookUtil.PLUGIN_FILE_NAME).getAbsolutePath();
             addAssetPathMethod.invoke(assetManager, pluginApkPath);
         } catch (Exception e) {
             Log.e("gxd", "Reflect AssetManager-->", e);

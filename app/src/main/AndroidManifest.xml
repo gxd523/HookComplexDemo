@@ -5,8 +5,7 @@
     <application
         android:name=".MyApplication"
         android:icon="@android:mipmap/sym_def_app_icon"
-        android:label="HookDemo"
-        android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen">
+        android:label="HookDemo">
         <activity android:name=".activity.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -35,12 +35,9 @@ public class MainActivity extends Activity {
     }
 
     public void jumpTargetActivity(View view) {
-        try {
-            Class TargetActivityClass = Class.forName("com.demo.plugin.TargetActivity");
-            startActivity(new Intent(this, TargetActivityClass));
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
+        Intent intent = new Intent();
+        intent.setClassName(getPackageName(), "com.demo.plugin.TargetActivity");
+        startActivity(intent);
     }
 
     public void setInterceptor(View view) {
