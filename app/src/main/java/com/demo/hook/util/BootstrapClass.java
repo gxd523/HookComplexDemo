@@ -6,24 +6,22 @@ import android.util.Log;
 import java.lang.reflect.Method;
 
 public final class BootstrapClass {
-
-    private static final String TAG = "BootstrapClass";
-
     private static Object sVmRuntime;
     private static Method setHiddenApiExemptions;
 
     static {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             try {
-                Method forName = Class.class.getDeclaredMethod("forName", String.class);
+                // Method forName = Class.class.getDeclaredMethod("forName", String.class);
                 Method getDeclaredMethod = Class.class.getDeclaredMethod("getDeclaredMethod", String.class, Class[].class);
 
-                Class<?> vmRuntimeClass = (Class<?>) forName.invoke(null, "dalvik.system.VMRuntime");
-                Method getRuntime = (Method) getDeclaredMethod.invoke(vmRuntimeClass, "getRuntime", null);
+                Class<?> vmRuntimeClass = Class.forName("dalvik.system.VMRuntime");
+                Method getRuntime = vmRuntimeClass.getDeclaredMethod("getRuntime");
+                // vmRuntimeClass.getDeclaredMethod("setHiddenApiExemptions", new Class[]{String[].class})
                 setHiddenApiExemptions = (Method) getDeclaredMethod.invoke(vmRuntimeClass, "setHiddenApiExemptions", new Class[]{String[].class});
                 sVmRuntime = getRuntime.invoke(null);
             } catch (Throwable e) {
-                Log.w(TAG, "reflect bootstrap failed:", e);
+                Log.w("gxd", "reflect bootstrap failed:", e);
             }
         }
     }
