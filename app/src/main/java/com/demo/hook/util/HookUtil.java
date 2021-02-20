@@ -89,7 +89,6 @@ public class HookUtil {
      * 2、拿到ActivityManager中的IActivityManagerSingleton
      * 3、动态代理IActivityManager中的startActivity()，并生成动态代理对象
      * 4、将IActivityManagerSingleton里面的IActivityManager换成动态代理生成的代理类
-     * 适配API29以下
      */
     @SuppressLint("PrivateApi")
     public static void hookActivityManager(final Context context) throws Exception {
@@ -100,9 +99,16 @@ public class HookUtil {
             throw new IllegalStateException("实在是没有检测到这种系统，需要对这种系统单独处理...");
         }
 
+        Class<?> iActivityManagerInterface;
+        if (Build.VERSION.SDK_INT >= 29) {
+            iActivityManagerInterface = Class.forName("android.app.IActivityTaskManager");
+        } else {
+            iActivityManagerInterface = Class.forName("android.app.IActivityManager");
+        }
+
         Object IActivityManagerProxy = Proxy.newProxyInstance(
                 context.getClassLoader(),
-                new Class[]{Class.forName("android.app.IActivityManager")},
+                new Class[]{iActivityManagerInterface},
                 new InvocationHandler() {
                     @Override
                     public Object invoke(Object obj, Method method, Object[] args) throws Throwable {
@@ -149,7 +155,10 @@ public class HookUtil {
      */
     private static Object getIActivityManagerInstance() throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Object iActivityManager;
-        if (Build.VERSION.SDK_INT > 25) {
+        if (Build.VERSION.SDK_INT >= 29) {
+            Class<?> activityTaskManagerClass = Class.forName("android.app.ActivityTaskManager");
+            iActivityManager = activityTaskManagerClass.getMethod("getService").invoke(null);
+        } else if (Build.VERSION.SDK_INT >= 26) {
             Class<?> activityManagerClass = Class.forName("android.app.ActivityManager");
             iActivityManager = activityManagerClass.getMethod("getService").invoke(null);
         } else {
@@ -167,7 +176,12 @@ public class HookUtil {
     private static Object getIActivityManagerSingletonInstance() throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
         Object IActivityManagerSingleton;
 
-        if (Build.VERSION.SDK_INT > 25) {
+        if (Build.VERSION.SDK_INT >= 29) {
+            Class<?> activityTaskManagerClass = Class.forName("android.app.ActivityTaskManager");
+            Field IActivityManagerSingletonField = activityTaskManagerClass.getDeclaredField("IActivityTaskManagerSingleton");
+            IActivityManagerSingletonField.setAccessible(true);
+            IActivityManagerSingleton = IActivityManagerSingletonField.get(null);
+        } else if (Build.VERSION.SDK_INT >= 26) {
             Class<?> activityManagerClass = Class.forName("android.app.ActivityManager");
             Field IActivityManagerSingletonField = activityManagerClass.getDeclaredField("IActivityManagerSingleton");
             IActivityManagerSingletonField.setAccessible(true);

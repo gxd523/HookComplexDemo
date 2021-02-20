@@ -6,6 +6,7 @@ import android.content.res.Resources;
 import android.util.Log;
 
 import com.demo.hook.util.HookUtil;
+import com.demo.hook.util.Reflection;
 
 import java.io.File;
 import java.lang.reflect.Method;
@@ -17,6 +18,9 @@ public class MyApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        if (!Reflection.unseal(this)) {// 为了在Android P及之后能拿到@hide的方法，如：getService()
+            Log.e("gxd", "开启访问@hide失败!");
+        }
         try {
             HookUtil.mergeDex(this);
             HookUtil.hookActivityManager(this);
