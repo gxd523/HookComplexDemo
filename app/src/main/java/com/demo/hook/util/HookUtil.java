@@ -112,7 +112,8 @@ public class HookUtil {
                 new InvocationHandler() {
                     @Override
                     public Object invoke(Object obj, Method method, Object[] args) throws Throwable {
-                        // int startActivity(in IApplicationThread caller, in String callingPackage, in Intent intent, in String resolvedType, in IBinder resultTo, in String resultWho, int requestCode, int flags, in ProfilerInfo profilerInfo, in Bundle options);
+                        // int startActivity(in IApplicationThread caller, in String callingPackage, in Intent intent, in String resolvedType, in
+                        // IBinder resultTo, in String resultWho, int requestCode, int flags, in ProfilerInfo profilerInfo, in Bundle options);
                         if ("startActivity".equals(method.getName())) {
                             // 把不能经过检测的TargetActivity替换成能够经过检测的ProxyActivity
                             Intent proxyIntent = new Intent(context, ProxyActivity.class);
@@ -133,7 +134,8 @@ public class HookUtil {
     }
 
     /**
-     * 添加完额外参数，接下来，由于跳转Activity最终都是ActivityThread中的Handler.handleMessage()中处理的，因此我们只要获取这个Handler实例，并添加我们自己的Handler.Callback实现，就能够跳过handleMessage()执行我们的跳转
+     * 添加完额外参数，接下来，由于跳转Activity最终都是ActivityThread中的Handler.handleMessage()中处理的，因此我们只要获取这个Handler实例，并添加我们自己的Handler.Callback实现，就能够跳过handleMessage()
+     * 执行我们的跳转
      * 此方法适用于API29以下
      */
     @SuppressLint("PrivateApi")
@@ -153,7 +155,8 @@ public class HookUtil {
     /**
      * IActivityManager实例也就是IActivityManager.aidl接口对应的实例对象
      */
-    private static Object getIActivityManagerInstance() throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    private static Object getIActivityManagerInstance()
+            throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Object iActivityManager;
         if (Build.VERSION.SDK_INT >= 29) {
             Class<?> activityTaskManagerClass = Class.forName("android.app.ActivityTaskManager");
@@ -195,7 +198,8 @@ public class HookUtil {
         return IActivityManagerSingleton;
     }
 
-    private static Object getActivityThreadInstance() throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, NoSuchFieldException {
+    private static Object getActivityThreadInstance() throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException,
+            IllegalAccessException, NoSuchFieldException {
         Object activityThread;
         Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
         if (Build.VERSION.SDK_INT > 25) {

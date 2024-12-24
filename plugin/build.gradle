@@ -1,16 +1,16 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 29
-    buildToolsVersion "29.0.3"
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.demo.plugin"
-        minSdkVersion 18
-        targetSdkVersion 29
+        minSdk 25
+        targetSdk 35
         versionCode 1
         versionName "1.0"
     }
+    namespace 'com.demo.plugin'
 }
 
 afterEvaluate {
@@ -27,19 +27,15 @@ void renamePluginFile(boolean isDebug) {
     def txt = isDebug ? "debug" : "release"
     printPluginLog(txt, "begin")
 
-    // 皮肤文件名
+    // 插件文件名
     final def pluginFileName = "plugin.apk"
-    // 皮肤目录
+    // 插件目录
     final def pluginDir = '../plugin-file/'
     final def dir = new File(pluginDir)
-    if (!dir.exists()) {
-        dir.mkdirs()
-    }
+    if (!dir.exists()) dir.mkdirs()
 
     final def f = new File(pluginDir + pluginFileName)
-    if (f.exists()) {
-        f.delete()
-    }
+    if (f.exists()) f.delete()
 
     copy {
         from(String.format('build/outputs/apk/%s/', txt))
